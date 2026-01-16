@@ -22,3 +22,6 @@ calculate GPA and CGPA, classify academic performance, and visualize results usi
    pip install -r requirements.txt
 2. Run the application:
    python main.py
+
+## Quick video walkthrough (20 seconds)
+https://github.com/Group-2-Robotic-Cleaners/student-grade-management-system/blob/main/20sec%20Video%20on%20Student-Grade-Management-System.mp4
