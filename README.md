@@ -1,2 +1,24 @@
-# student-grade-management-system
-A Python-based Student Grade Management System with GPA, CGPA, and academic performance visualization
+# Student Grade Management System
+
+## Description
+A Python-based application developed using PyQt5 to manage student academic records,
+calculate GPA and CGPA, classify academic performance, and visualize results using charts.
+
+## Features
+- Student registration
+- Course and grade entry
+- Semester GPA and CGPA calculation
+- Academic classification (Pass/Fail, Degree Class)
+- Data visualization using charts
+
+## Technologies Used
+- Python
+- PyQt5
+- Pandas
+- Matplotlib
+
+## How to Run
+1. Install dependencies:
+   pip install -r requirements.txt
+2. Run the application:
+   python main.py
