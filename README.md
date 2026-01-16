@@ -1,2 +1,2 @@
 # student-grade-management-system
-Python-based Student Grade Management System with GPA and CGPA calculation
+A Python-based Student Grade Management System with GPA, CGPA, and academic performance visualization
