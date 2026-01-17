@@ -25,3 +25,7 @@ calculate GPA and CGPA, classify academic performance, and visualize results usi
 
 ## Quick video walkthrough (20 seconds)
 https://github.com/Group-2-Robotic-Cleaners/student-grade-management-system/blob/main/20sec%20Video%20on%20Student-Grade-Management-System.mp4
+
+## Report on the project
+[MAIN REPORT. (1).pdf](https://github.com/user-attachments/files/24687231/MAIN.REPORT.1.pdf)
+
