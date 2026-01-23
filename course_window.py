@@ -1,220 +1,164 @@
 from PyQt5.QtWidgets import (
-    QWidget,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QVBoxLayout,
-    QMessageBox,
-    QListWidget
+    QWidget, QLabel, QLineEdit, QPushButton,
+    QVBoxLayout, QMessageBox, QComboBox
 )
+import csv
 
-from src.data_handler import save_record
-from src.gpa_calculator import calculate_gpa
-from src.charts_window import ChartsWindow
-from src.semester_manager import Semester, StudentAcademicRecord
-from src.academic_classifier import (
-    semester_pass_fail,
-    classify_degree,
-    academic_remark
-)
+from score_validator import validate_scores
+from gpa_calculator import total_score, score_to_grade, grade_point
+from grade_statistics import GradeStatistics
+from charts_window import ChartsWindow
 
 
 class CourseWindow(QWidget):
-    """
-    Full academic management window:
-    - Course entry
-    - Semester tracking
-    - GPA & CGPA computation
-    - Academic classification
-    - Performance visualization
-    """
-
-    def __init__(self, student_name, matric):
+    def __init__(self, name, matric, semester, semester_manager):
         super().__init__()
 
-        self.student_name = student_name
+        self.name = name
         self.matric = matric
+        self.current_semester = semester
+        self.semester_manager = semester_manager
+        self.grade_stats = GradeStatistics()
+        self.registered_courses = []
 
-        # Temporary storage
-        self.grades = []
-        self.units = []
+        self.setWindowTitle("Course & Semester Management")
+        self.setGeometry(350, 150, 480, 620)
 
-        # Academic tracking
-        self.academic_record = StudentAcademicRecord()
-        self.current_semester = None
+        # Inputs
+        self.semester_input = QLineEdit(self.current_semester)
+        self.course_input = QLineEdit()
+        self.unit_input = QLineEdit()
+        self.exam_input = QLineEdit()
+        self.test_input = QLineEdit()
+        self.attendance_input = QLineEdit()
+        self.project_input = QLineEdit()
+        self.quiz_input = QLineEdit()
 
-        self.setWindowTitle("Student Academic Management System")
-        self.setGeometry(250, 120, 560, 680)
+        self.course_dropdown = QComboBox()
+        self.course_dropdown.addItem("Registered Courses")
+
+        # Buttons
+        self.add_course_btn = QPushButton("Add Course")
+        self.add_course_btn.clicked.connect(self.save_course)
+
+        self.change_semester_btn = QPushButton("Switch / Add Semester")
+        self.change_semester_btn.clicked.connect(self.change_semester)
+
+        self.chart_btn = QPushButton("View Charts & CGPA")
+        self.chart_btn.clicked.connect(self.show_charts)
 
         layout = QVBoxLayout()
 
-        # Student Info
-        layout.addWidget(QLabel(f"Student Name: {student_name}"))
-        layout.addWidget(QLabel(f"Matric Number: {matric}"))
-
-        # Semester Section
-        layout.addWidget(QLabel("Semester Name"))
-        self.semester_input = QLineEdit()
-        self.semester_input.setPlaceholderText(
-            "e.g First Semester 2024/2025"
-        )
+        layout.addWidget(QLabel("Current Semester"))
         layout.addWidget(self.semester_input)
 
-        self.start_semester_btn = QPushButton("Start New Semester")
-        self.start_semester_btn.clicked.connect(self.start_new_semester)
-        layout.addWidget(self.start_semester_btn)
-
-        # Course Inputs
         layout.addWidget(QLabel("Course Code"))
-        self.course_input = QLineEdit()
-        self.course_input.setPlaceholderText("e.g ICT323")
         layout.addWidget(self.course_input)
 
         layout.addWidget(QLabel("Course Unit"))
-        self.unit_input = QLineEdit()
-        self.unit_input.setPlaceholderText("e.g 3")
         layout.addWidget(self.unit_input)
 
-        layout.addWidget(QLabel("Grade (A - F)"))
-        self.grade_input = QLineEdit()
-        self.grade_input.setPlaceholderText("A, B, C, D, E or F")
-        layout.addWidget(self.grade_input)
+        layout.addWidget(QLabel("Exam (70)"))
+        layout.addWidget(self.exam_input)
 
-        self.add_button = QPushButton("Add Course")
-        self.add_button.clicked.connect(self.add_course)
-        layout.addWidget(self.add_button)
+        layout.addWidget(QLabel("Test (10)"))
+        layout.addWidget(self.test_input)
 
-        # Course List
-        layout.addWidget(QLabel("Courses Entered"))
-        self.course_list = QListWidget()
-        layout.addWidget(self.course_list)
+        layout.addWidget(QLabel("Attendance (5)"))
+        layout.addWidget(self.attendance_input)
 
-        # Result Button
-        self.result_button = QPushButton(
-            "Calculate GPA, CGPA & View Analytics"
-        )
-        self.result_button.clicked.connect(self.calculate_student_gpa)
-        layout.addWidget(self.result_button)
+        layout.addWidget(QLabel("Project (10)"))
+        layout.addWidget(self.project_input)
+
+        layout.addWidget(QLabel("Quiz (5)"))
+        layout.addWidget(self.quiz_input)
+
+        layout.addWidget(self.add_course_btn)
+        layout.addWidget(QLabel("Registered Courses"))
+        layout.addWidget(self.course_dropdown)
+        layout.addWidget(self.change_semester_btn)
+        layout.addWidget(self.chart_btn)
 
         self.setLayout(layout)
 
-    def start_new_semester(self):
-        semester_name = self.semester_input.text().strip()
-
-        if not semester_name:
-            QMessageBox.warning(
-                self,
-                "Input Error",
-                "Please enter a semester name."
-            )
+    def change_semester(self):
+        new_sem = self.semester_input.text().strip()
+        if not new_sem:
+            QMessageBox.warning(self, "Error", "Semester cannot be empty")
             return
 
-        self.current_semester = Semester(semester_name)
-        self.grades.clear()
-        self.units.clear()
-        self.course_list.clear()
+        self.current_semester = new_sem
+        self.registered_courses.clear()
+        self.course_dropdown.clear()
+        self.course_dropdown.addItem("Registered Courses")
 
         QMessageBox.information(
             self,
-            "Semester Started",
-            f"{semester_name} started successfully."
+            "Semester Changed",
+            f"Now recording courses for {new_sem}"
         )
 
-    def add_course(self):
-        if not self.current_semester:
-            QMessageBox.warning(
-                self,
-                "Semester Error",
-                "Start a semester before adding courses."
-            )
-            return
-
-        course = self.course_input.text().strip()
-        grade = self.grade_input.text().strip().upper()
-
+    def save_course(self):
         try:
+            course_code = self.course_input.text().strip().upper()
+            if course_code in self.registered_courses:
+                QMessageBox.warning(self, "Duplicate", "Course already added")
+                return
+
+            exam = int(self.exam_input.text())
+            test = int(self.test_input.text())
+            attendance = int(self.attendance_input.text())
+            project = int(self.project_input.text())
+            quiz = int(self.quiz_input.text())
             unit = int(self.unit_input.text())
-        except ValueError:
-            QMessageBox.warning(
-                self,
-                "Input Error",
-                "Course unit must be numeric."
-            )
-            return
 
-        if not course or grade not in ["A", "B", "C", "D", "E", "F"]:
-            QMessageBox.warning(
-                self,
-                "Input Error",
-                "Invalid course code or grade."
-            )
-            return
+            validate_scores(exam, test, attendance, project, quiz)
 
-        save_record(
-            self.student_name,
-            self.matric,
-            course,
-            unit,
-            grade
-        )
+            total = total_score(exam, test, attendance, project, quiz)
+            grade = score_to_grade(total)
+            gp = grade_point(grade)
 
-        self.grades.append(grade)
-        self.units.append(unit)
-        self.current_semester.add_course(course, unit, grade)
+            # save across semesters
+            self.semester_manager.add_course(self.current_semester, unit, gp)
+            self.grade_stats.add_grade(grade)
 
-        self.course_list.addItem(
-            f"{course} | Unit: {unit} | Grade: {grade}"
-        )
+            with open("data/students.csv", "a", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    self.name,
+                    self.matric,
+                    self.current_semester,
+                    course_code,
+                    unit,
+                    exam,
+                    test,
+                    attendance,
+                    project,
+                    quiz,
+                    total,
+                    grade,
+                    "PASS" if grade != "F" else "FAIL"
+                ])
 
-        self.course_input.clear()
-        self.unit_input.clear()
-        self.grade_input.clear()
+            self.registered_courses.append(course_code)
+            self.course_dropdown.addItem(course_code)
 
-    def calculate_student_gpa(self):
-        if not self.grades:
-            QMessageBox.warning(
-                self,
-                "Calculation Error",
-                "No courses entered."
-            )
-            return
+            QMessageBox.information(self, "Saved", "Course added successfully")
 
-        gpa = calculate_gpa(self.grades, self.units)
+            for field in [
+                self.course_input, self.unit_input, self.exam_input,
+                self.test_input, self.attendance_input,
+                self.project_input, self.quiz_input
+            ]:
+                field.clear()
 
-        self.current_semester.set_gpa(gpa)
-        self.academic_record.add_semester(self.current_semester)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
 
-        cgpa = self.academic_record.calculate_cgpa()
+    def show_charts(self):
+        cgpa = self.semester_manager.cgpa()
+        trend = self.semester_manager.gpa_trend()
+        stats = self.grade_stats.distribution()
 
-        semester_status = semester_pass_fail(gpa)
-        degree_class = classify_degree(cgpa)
-        remark = academic_remark(cgpa)
-
-        QMessageBox.information(
-            self,
-            "Academic Summary",
-            f"Semester GPA: {gpa}\n"
-            f"Semester Status: {semester_status}\n\n"
-            f"Current CGPA: {cgpa}\n"
-            f"Degree Classification: {degree_class}\n"
-            f"Remark: {remark}"
-        )
-
-        # Prepare CGPA trend data
-        semester_labels = [
-            sem.semester_name for sem in self.academic_record.semesters
-        ]
-        cgpa_values = []
-        running_total = 0
-
-        for i, sem in enumerate(self.academic_record.semesters, start=1):
-            running_total += sem.gpa
-            cgpa_values.append(round(running_total / i, 2))
-
-        # Open analytics window
-        self.charts_window = ChartsWindow(
-            self.grades,
-            semester_labels,
-            cgpa_values
-        )
-        self.charts_window.show()
+        self.chart_window = ChartsWindow(cgpa, trend, stats)
+        self.chart_window.show()
