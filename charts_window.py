@@ -1,69 +1,34 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-
+import matplotlib.pyplot as plt
+from academic_classifier import AcademicClassifier
 
 class ChartsWindow(QWidget):
-    """
-    Displays academic performance charts:
-    - Grade distribution (bar chart)
-    - CGPA trend across semesters (line chart)
-    """
-
-    def __init__(self, grades, semester_labels, cgpa_values):
+    def __init__(self, cgpa, gpa_trend, grade_stats):
         super().__init__()
+        self.setWindowTitle("Academic Performance Overview")
+        self.setGeometry(400, 200, 500, 400)
 
-        self.setWindowTitle("Academic Performance Analytics")
-        self.setGeometry(300, 150, 700, 600)
+        classifier = AcademicClassifier(cgpa)
+        summary = classifier.full_summary()
 
         layout = QVBoxLayout()
-
-        title = QLabel("Academic Performance Visualization")
-        title.setStyleSheet("font-size:16px; font-weight:bold;")
-        layout.addWidget(title)
-
-        # Create matplotlib figure
-        self.figure = Figure(figsize=(6, 5))
-        self.canvas = FigureCanvas(self.figure)
-        layout.addWidget(self.canvas)
-
+        layout.addWidget(QLabel(f"CGPA: {summary['CGPA']}"))
+        layout.addWidget(QLabel(f"Degree Class: {summary['Degree Class']}"))
+        layout.addWidget(QLabel(f"Remark: {summary['Remark']}"))
         self.setLayout(layout)
 
-        self.plot_charts(grades, semester_labels, cgpa_values)
+        # GPA Trend Line Chart
+        plt.figure(figsize=(5, 3))
+        plt.plot(list(gpa_trend.keys()), list(gpa_trend.values()), marker='o')
+        plt.title("CGPA Trend Across Semesters")
+        plt.ylabel("GPA")
+        plt.xlabel("Semester")
+        plt.ylim(0, 5)
+        plt.show()
 
-    def plot_charts(self, grades, semester_labels, cgpa_values):
-        """
-        Plots:
-        1. Grade distribution
-        2. CGPA trend across semesters
-        """
-        self.figure.clear()
-
-        # -------- Grade Distribution --------
-        ax1 = self.figure.add_subplot(211)
-        grade_counts = {g: grades.count(g) for g in set(grades)}
-
-        ax1.bar(
-            grade_counts.keys(),
-            grade_counts.values()
-        )
-        ax1.set_title("Grade Distribution")
-        ax1.set_xlabel("Grade")
-        ax1.set_ylabel("Count")
-
-        # -------- CGPA Trend --------
-        ax2 = self.figure.add_subplot(212)
-
-        if cgpa_values:
-            ax2.plot(
-                semester_labels,
-                cgpa_values,
-                marker="o"
-            )
-            ax2.set_title("CGPA Trend Across Semesters")
-            ax2.set_xlabel("Semester")
-            ax2.set_ylabel("CGPA")
-            ax2.set_ylim(0, 5)
-
-        self.figure.tight_layout()
-        self.canvas.draw()
+        # Grade Distribution Chart
+        plt.figure(figsize=(5, 3))
+        plt.bar(grade_stats.keys(), grade_stats.values())
+        plt.title("Grade Distribution")
+        plt.ylabel("Number of Courses")
+        plt.show()
